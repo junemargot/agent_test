@@ -1,0 +1,4 @@
+# 필요 패키지 리스트
+selenium
+webdriver-manager
+pandas
