@@ -13,7 +13,7 @@ load_dotenv(override=True)
 DATA_API_KEY = os.getenv("DATA_DECODING_KEY")
 
 # API 호출 테스트
-def test_meal_services_api():
+def test_meal_services():
   """무료급식소 api 테스트"""
   serviceKey = DATA_API_KEY
   url = f"http://api.data.go.kr/openapi/tn_pubr_public_free_mlsv_api?serviceKey={serviceKey}&pageNo=1&numOfRows=50&type=json"
@@ -62,4 +62,4 @@ def test_meal_services_api():
   
 if __name__ == "__main__":
   print("무료급식소 API 테스트 시작")
-  test_meal_services_api()
+  test_meal_services()

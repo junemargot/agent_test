@@ -1,9 +1,10 @@
-from test_api import get_meal_services
+from test_api import test_meal_services
 from openai import OpenAI
 import os
 import json
 from dotenv import load_dotenv
-from langchain_community.chat_models import ChatOpenAI
+# from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 import logging  # 추가
 
@@ -63,7 +64,7 @@ def query_chatbot(user_input):
 
     # 해당 지역의 무료급식소 정보 가져오기
     logging.debug(f"🔎 검색할 지역: {region}")
-    meal_services = get_meal_services(region)
+    meal_services = test_meal_services(region)
     logging.debug(f"📊 무료급식소 데이터: {meal_services}")
 
     if not meal_services or isinstance(meal_services, dict) and "error" in meal_services:
