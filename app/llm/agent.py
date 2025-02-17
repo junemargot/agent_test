@@ -1,4 +1,5 @@
 from openai import OpenAI
+from cachetools import TTLCache
 from app.core.config import settings
 from app.services.data_client import PublicDataClient
 
@@ -11,6 +12,7 @@ class MealAgent:
   """
   def __init__(self, data_client: PublicDataClient):
     self.data_client = data_client # 공공데이터 API에서 데이터를 가져오는 객체
+    self.cache = TTLCache(maxsize=100, ttl=300) # 최대 100개 저장, 5분간 유지
     self.SYSTEM_PROMPT = """
       당신은 고령층을 위한 무료 급식소 안내 전문가입니다.
       사용자가 요청한 지역(예: {region})에 해당하는 무료급식소 정보를 아래 데이터에서 찾아주세요.

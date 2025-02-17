@@ -9,7 +9,7 @@ class PublicDataClient:
     self.base_url = "http://api.data.go.kr/openapi/tn_pubr_public_free_mlsv_api"
     self.service_key = settings.DATA_DECODING_KEY
 
-  def fetch_meal_services(self, page: int=1, num_of_rows: int=1500):
+  def fetch_meal_services(self, page: int=1, num_of_rows: int=1000):
     """
     전국무료급식소표준데이터를 API에서 불러온 후, 필드명을 매핑하여 반환한다.
     :param page: 가져올 페이지 번호 (기본값 1)
@@ -17,45 +17,41 @@ class PublicDataClient:
     '시설명', '소재지도로명주소' 등 한국어 필드명을
     'fcltyNm', 'rdnmadr' 등 영문 키로 매핑하여 반환합니다.
     """
+    all_records = []  # 전체 데이터를 저장할 리스트
+    
+    while True:  # 모든 페이지를 순회
+      try:
+        # 1. API 호출을 위한 요청 파라미터 설정
+        params = {
+          "serviceKey": self.service_key,
+          "pageNo": page,
+          "numOfRows": num_of_rows,
+          "type": "json"
+        }
 
-    # 1. API 호출을 위한 요청 파라미터 설정
-    params = {
-      "serviceKey": self.service_key, # API 인증키
-      "pageNo": page,                 # 페이지 번호
-      "numOfRows": num_of_rows,       # 한 페이지당 데이터 개수
-      "type": "json"                  # 응답 형식(JSON)
-    }
-
-    # 2. API 호출(GET 요청)
-    response = requests.get(self.base_url, params=params)
-    response.raise_for_status() # 요청 실패 시 예외 발생(HTTP 오류 시 중단)
-    
-    json_data = response.json() # 응답 데이터를 JSON 형식으로 파싱
-    
-    print("DEBUG: API Response:", json_data) # 디버깅을 위한 응답 데이터 출력
-    
-    # 3. API 응답 오류 처리
-    if json_data['response']['header']['resultCode'] != "00":
-      # API에서 오류 코드가 반환되면 예외 발생
-      raise ValueError(f"API Error: {json_data['response']['header']['resultMsg']}")
-    
-    # 4. 응답에서 필요한 데이터 부분 추출
-    items = json_data['response']['body']['items']
-    # 'items'에 무료급식소 데이터가 담긴 딕셔너리인 경우 처리
-    if isinstance(items, dict): 
-        items = items.get('item', [])
-    
-    if not items:  # 데이터가 없을 경우, 빈 리스트 반환
-        print("DEBUG: No items found in response")
-        return []
-    
-    # 5. API 응답 필드를 표준화하여 변환 (필드명 매핑)
-    normalized_records = []
-    for item in items:
-        # 디버깅을 위한 개별 아이템 출력
-        print("DEBUG: Processing item:", item)
+        # 2. API 호출 및 데이터 처리
+        response = requests.get(self.base_url, params=params)
+        response.raise_for_status()
+        json_data = response.json()
         
-        normalized = {
+        print(f"DEBUG: Fetching page {page}")
+        print(f"DEBUG: API Response: {json_data}")  # 응답 구조 확인용
+        
+        # 3. 응답 구조 확인 및 데이터 추출
+        if 'response' not in json_data or 'body' not in json_data['response']:
+          print(f"DEBUG: Invalid response structure on page {page}")
+          break
+          
+        items = json_data['response']['body'].get('items', {})
+        if isinstance(items, dict):
+          items = items.get('item', [])
+        
+        if not items:  # 더 이상 데이터가 없으면 종료
+          break
+        
+        # 4. 현재 페이지 데이터 정규화 및 추가
+        for item in items:
+          normalized = {
             "fcltyNm":  item.get("fcltyNm", ""),                      # 시설명
             "rdnmadr":  item.get("rdnmadr", ""),                      # 도로명주소
             "lnmadr":   item.get("lnmadr", ""),                       # 지번주소
@@ -65,10 +61,16 @@ class PublicDataClient:
             "mlsvTrget":         item.get("mlsvTrget", ""),           # 급식대상 
             "mlsvTime":          item.get("mlsvTime", ""),            # 급식시간
             "mlsvDate":          item.get("mlsvDate", "")             # 급식일자
-        }
-        normalized_records.append(normalized)  # 변환된 데이터를 리스트에 추가
+          }
+          all_records.append(normalized)
+      
+        page += 1  # 다음 페이지로
+        
+      except Exception as e:
+        print(f"DEBUG: Error on page {page}: {str(e)}")
+        break
     
-    return normalized_records  # 정리된 데이터 리스트 반환
+    return all_records
 
   def filter_by_region(self, data: list, region: str) -> list:
     """
